@@ -35,6 +35,11 @@ GATEWAY_DEBUG=true
 GATEWAY_DEBUG_JSONL_FILE=./logs/gateway_requests.jsonl
 ```
 
+如需网关默认注入推理强度（不覆盖客户端显式传值）：
+```bash
+GATEWAY_REASONING_EFFORT=high
+```
+
 ### 2. 启动服务
 
 使用启动脚本（自动安装依赖）：

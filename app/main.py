@@ -35,6 +35,7 @@ GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", "8765"))
 DEBUG_MODE = os.getenv("GATEWAY_DEBUG", "false").lower() == "true"
 DEBUG_JSONL_FILE = os.getenv("GATEWAY_DEBUG_JSONL_FILE", "gateway_requests.jsonl")
 DEBUG_WRITE_LOCK = asyncio.Lock()
+DEFAULT_REASONING_EFFORT = os.getenv("GATEWAY_REASONING_EFFORT", "high")
 
 
 def parse_json_payload(body: bytes):
@@ -105,11 +106,14 @@ def process_request_body(body: bytes) -> tuple[bytes, bool]:
     try:
         data = json.loads(body)
         stream = data.get("stream", False)
+        modified = False
+        if data.get("messages") and "reasoning_effort" not in data:
+            data["reasoning_effort"] = DEFAULT_REASONING_EFFORT
+            modified = True
         
         # 修复逻辑：为 assistant 消息补充 reasoning_content
         messages = data.get("messages", [])
-        modified = False
-        for i, msg in enumerate(messages):
+        for msg in messages:
             if msg.get("role") == "assistant":
                 # Kimi API 严格要求 Thinking 模型必须包含 reasoning_content
                 # 无论是普通回复还是 Tool Call，都可能需要
