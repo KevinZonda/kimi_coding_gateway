@@ -1,5 +1,7 @@
 # Kimi Coding Plan Gateway
 
+> 由 [yulate/kimi_coding_gateway](https://github.com/yulate/kimi_coding_gateway) 改进而来。
+
 这是一个 API 网关，用于将 OpenAI 兼容的 API 请求转发到 Kimi Coding Plan API (`api.kimi.com/coding`)。
 它解决了 Kimi Coding API 的访问限制问题，并提供了完整的 OpenAI 兼容性，支持 Tools Calling 和 MCP 协议。
 
