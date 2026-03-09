@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 import uvicorn
 from dotenv import load_dotenv
+import copy
 
 # 加载环境变量
 load_dotenv()
@@ -257,14 +258,36 @@ async def handle_normal_request(target_url: str, body: bytes, debug_context: dic
             content = response.json()
         except json.JSONDecodeError as exc:
             content = {"_parse_error": str(exc), "_raw": response.text}
+        
+        if target_url == f"{KIMI_BASE_URL}/models" or target_url == f"{KIMI_BASE_URL}/models/":
+            if 'data' in content:
+                jo = None
+                for m in content['data']:
+                    i = m.get('id', "")
+                    if i =='kimi-for-coding':
+                        jo = m
+                        break
 
-        debug_record = {
+                if jo is not None:
+                    def append_model(eff):
+                        code = eff.lower()
+                        njo = copy.deepcopy(jo)
+                        njo['id'] = f"kimi-for-coding:{code}"
+                        njo['display_name'] = njo['display_name'] + f" ({eff} Thinking)"
+                        content['data'].append(njo)
+
+                    append_model("High")
+                    append_model("Medium")
+                    append_model("Low")
+                    append_model("Off")
+                    content['first_id'] = content['data'][0]['id']
+                    content['last_id'] = content['data'][-1]['id']
+
+        await append_debug_jsonl({
             **debug_context,
             "status_code": response.status_code,
             "response_json": content,
-        }
-        await append_debug_jsonl(debug_record)
-        
+        })
         return JSONResponse(
             content=content,
             status_code=response.status_code,
