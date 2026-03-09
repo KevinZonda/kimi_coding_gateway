@@ -93,6 +93,21 @@ async def proxy_v1(path: str, request: Request):
     target_url = f"{KIMI_BASE_URL}/{path}"
     return await forward_request(target_url, request)
 
+def parse_reasoning_effect(body_data):
+    data = body_data
+    model_name = data.get("model", "")
+
+    if "reasoning_effort" in data:
+        return data["reasoning_effort"]
+    if model_name.endswith("high"):
+        return "high"
+    if model_name.endswith("medium"):
+        return "medium"
+    if model_name.endswith("low"):
+        return "low"
+    if model_name.endswith("off"):
+        return None
+    return DEFAULT_REASONING_EFFORT
 
 def process_request_body(body: bytes) -> tuple[bytes, bool]:
     """
@@ -107,28 +122,13 @@ def process_request_body(body: bytes) -> tuple[bytes, bool]:
         data = json.loads(body)
         stream = data.get("stream", False)
 
-        model_name = data.get("model", "")
-       
-        if "reasoning_effort" not in data:
-            reasoning_effort = data["reasoning_effort"]
-        if model_name.endswith("high"):
-            reasoning_effort = "high"
-        elif model_name.endswith("medium"):
-            reasoning_effort = "medium"
-        elif model_name.endswith("low"):
-            reasoning_effort = "low"
-        elif model_name.endswith("off"):
-            reasoning_effort = None
-        else:
-             reasoning_effort = DEFAULT_REASONING_EFFORT
-
         if data.get("messages") and "reasoning_effort" not in data:
-            data["reasoning_effort"] = reasoning_effort
+            data["reasoning_effort"] = parse_reasoning_effect(data)
 
         if 'thinking' not in data:
             data['thinking'] = {}
         
-        data['thinking']['type'] = 'disabled' if reasoning_effort is None else "enabled"
+        data['thinking']['type'] = 'disabled' if data["reasoning_effort"] is None else "enabled"
         data['model'] = 'kimi-for-coding'
         
         # 修复逻辑：为 assistant 消息补充 reasoning_content
@@ -137,8 +137,7 @@ def process_request_body(body: bytes) -> tuple[bytes, bool]:
             if msg.get("role") == "assistant":
                 # Kimi API 严格要求 Thinking 模型必须包含 reasoning_content
                 # 无论是普通回复还是 Tool Call，都可能需要
-                if "reasoning_content" not in msg:
-                    msg["reasoning_content"] = " " # 注入一个空格或点，尽量减少对模型的影响
+                msg["reasoning_content"] = msg.get("reasoning_content", "")
         print(data)
         return json.dumps(data).encode("utf-8"), stream
     except json.JSONDecodeError:
